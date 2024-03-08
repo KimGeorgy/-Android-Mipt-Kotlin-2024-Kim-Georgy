@@ -11,31 +11,21 @@ fun main() {
     }
 }
 
-class Node (
-    val max: Int,
-    var prev: Node? = null
-)
-
 class Stack (
-    private var head: Node? = null,
-    private var tail: Node? = null
+    private val stack: MutableList<Pair<Int, Int>> = mutableListOf()
 ) {
     fun push(v: Int) {
-        if (head == null) {
-            head = Node(v)
-            tail = head
-        } else {
-            val newNode = Node(if (v > tail!!.max) v else tail!!.max)
-            newNode.prev = tail
-            tail = newNode
-        }
+        if (stack.isEmpty())
+            stack.addLast(Pair(v, v))
+        else
+            stack.addLast(Pair(v, maxOf(v, stack.last().second)))
     }
 
     fun pop() {
-        tail = tail?.prev
+        stack.removeLast()
     }
 
     fun max(): Int {
-        return tail!!.max
+        return stack.last().second
     }
 }
