@@ -6,75 +6,85 @@ fun main() {
     val cat = Cat(100.0)
     zoo = Zoo(listOf(cat, Dog(1.2), Hippo(1.75), Horse(2.34), Fish(0.2)))
     val cats = zoo.animalsIsInstance<Cat>()
-    zoo.remove(cat.id)
+    zoo.removeAnimal(cat.id)
 }
 
 class Zoo(
     val animals: TreeSet<Animal> = TreeSet(compareBy<Animal> { it.height }),
     val animalIds: HashMap<UUID, Animal> = HashMap(),
     private val zookeepers: HashMap<UUID, Zookeeper> = HashMap(),
-    private val assignment: HashMap<Animal, Zookeeper> = HashMap()
+    private val assignZookeeperToAnimal: HashMap<Animal, Zookeeper> = HashMap(),
+    private val talkingAnimals: MutableList<Talking> = mutableListOf()
 ) {
+     private lateinit var firstZookeeper: Zookeeper
+
     constructor(collection: Collection<Animal>) : this() {
         animals.addAll(collection)
-        val firstZookeeper = getFirstZookeeper()
+        hireFirstZookeeper()
         for (animal in collection) {
-            assignment[animal] = firstZookeeper
+            assignZookeeperToAnimal[animal] = firstZookeeper
         }
     }
 
-    fun getFirstZookeeper(): Zookeeper {
-        val firstZookeeper = Zookeeper("Zack")
+    fun hireFirstZookeeper() {
+        firstZookeeper = Zookeeper("Zack")
         zookeepers[firstZookeeper.id] = firstZookeeper
-        return firstZookeeper
     }
 
-    fun add(animal: Animal) {
-        if (zookeepers.isEmpty()) {
-            getFirstZookeeper()
+    fun addAnimal(animal: Animal) {
+        if (!this::firstZookeeper.isInitialized) {
+            hireFirstZookeeper()
         }
         animals.add(animal)
-        assignment[animal] = zookeepers.values.first()
+        assignZookeeperToAnimal[animal] = firstZookeeper
+        if (animal is Talking) {
+            talkingAnimals.add(animal)
+        }
     }
 
     fun findAnimal(id: UUID): Animal? {
         return animalIds[id]
     }
 
-    fun remove(id: UUID) {
+    fun removeAnimal(id: UUID) {
         val animal = findAnimal(id)
         animals.remove(animal)
-        assignment.remove(animal)
+        assignZookeeperToAnimal.remove(animal)
+        animalIds.remove(id)
+        if (animal is Talking) {
+            talkingAnimals.remove(animal)
+        }
     }
 
     fun assign(animal: Animal, zookeeper: Zookeeper) {
         if (!animals.contains(animal)) {
-            this.add(animal)
+            this.addAnimal(animal)
         }
-        assignment[animal] = zookeeper
+        assignZookeeperToAnimal[animal] = zookeeper
     }
 
     fun assignById(animal: Animal, zookeeperId: UUID) {
         if (!animals.contains(animal)) {
-            this.add(animal)
+            this.addAnimal(animal)
         }
-        assignment[animal] = zookeepers[zookeeperId]!!
+        assignZookeeperToAnimal[animal] =
+            zookeepers[zookeeperId] ?: throw IllegalArgumentException("No zookeeper with id: $zookeeperId")
     }
 
     fun findByZookeeper(zookeeperId: UUID): Collection<Animal> {
-        return assignment.filterValues{ it.id == zookeeperId }.keys
+        return assignZookeeperToAnimal.filterValues{ it.id == zookeeperId }.keys
     }
 
     fun findByZookeeper(zookeeperName: String): Collection<Animal> {
-        return assignment.filterValues{ it.name == zookeeperName }.keys
+        return assignZookeeperToAnimal.filterValues{ it.name == zookeeperName }.keys
     }
 
     fun animalsHigherThen(height: Double): Collection<Animal>? {
-        return animals.tailSet(Cat(height))
+        return animals.tailSet(object: Animal(UUID.randomUUID(), height, "none"){})
     }
 
     fun animalsTalking(): Collection<Animal> {
-        return animals.filterIsInstance<Talking>()
+        return talkingAnimals
     }
 
     inline fun <reified T: Animal> animalsIsInstance(): Collection<Animal> {
